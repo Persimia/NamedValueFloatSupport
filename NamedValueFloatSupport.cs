@@ -77,9 +77,9 @@ namespace NamedValueFloatSupport
 
         public override string Name => "NamedValueFloatSupport";
 
-        public override string Version => "1.0";
+        public override string Version => "0.1";
 
-        public override string Author => "Your Name";
+        public override string Author => "Sam Kemp";
 
         public override bool Loaded()
         {
@@ -87,9 +87,17 @@ namespace NamedValueFloatSupport
             TableLayoutPanel actionLayout = Host.MainForm.FlightData.Controls.Find("tableLayoutPanel1", true).FirstOrDefault() as TableLayoutPanel;
 
             if (actionLayout == null)
-            {
+            { 
                 MessageBox.Show("Action layout not found!");
                 return false;
+            }
+            // Ensure the parent container is set to fill the entire available space
+            actionLayout.Dock = DockStyle.Fill;
+            // Adjust the height of the action layout
+            actionLayout.RowStyles.Clear();
+            for (int i = 0; i < actionLayout.RowCount; i++) 
+            {
+                actionLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             }
 
             // Create and add the text boxes and button
@@ -104,7 +112,7 @@ namespace NamedValueFloatSupport
             logTextBox.Multiline = true;
             logTextBox.ScrollBars = ScrollBars.Vertical;
             logTextBox.ReadOnly = true;
-            logTextBox.Height = 100;
+            //logTextBox.Height = 100;
             logTextBox.Dock = DockStyle.Fill;
 
             sendButton.Text = "Send NamedValueFloat";
@@ -124,7 +132,9 @@ namespace NamedValueFloatSupport
 
             actionLayout.Controls.Add(logTextBox, 0, 7);
             actionLayout.SetColumnSpan(logTextBox, 5);
-            actionLayout.SetRowSpan(logTextBox, 5);
+            actionLayout.SetRowSpan(logTextBox, 3);
+
+            
 
             // Subscribe to MAVLink message stream
             MainV2.comPort.OnPacketReceived += Mavlink_OnPacketReceived;
