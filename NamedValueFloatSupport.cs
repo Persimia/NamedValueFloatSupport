@@ -168,7 +168,6 @@ namespace NamedValueFloatSupport
         {   
             if (message.msgid == (byte)MAVLink.MAVLINK_MSG_ID.NAMED_VALUE_FLOAT)
             {
-                MessageBox.Show("Message recieved");
                 var namedValueFloat = (MAVLink.mavlink_named_value_float_t)message.ToStructure<MAVLink.mavlink_named_value_float_t>();
                 string name = Encoding.ASCII.GetString(namedValueFloat.name).TrimEnd('\0');
                 string logEntry = $"{name} = {namedValueFloat.value}";
