@@ -1,63 +1,4 @@
-﻿//using MissionPlanner;
-using MissionPlanner.Plugin;
-//using MissionPlanner.Utilities;
-//using System;
-//using System.Collections.Generic;
-//using System.IO;
-//using System.Windows.Forms;
-//using System.Diagnostics;
-//using MissionPlanner.Controls.PreFlight;
-//using MissionPlanner.Controls;
-//using System.Linq;
-
-//namespace NmedValueFloatSupport
-//{
-//    public class NmedValueFloatSupport : Plugin
-//    {
-//        public override string Name
-//        {
-//            get { return "NmedValueFloatSupport"; }
-//        }
-
-//        public override string Version
-//        {
-//            get { return "0.1"; }
-//        }
-
-//        public override string Author
-//        {
-//            get { return "Add your name here"; }
-//        }
-
-//        //[DebuggerHidden]
-//        public override bool Init()
-//		//Init called when the plugin dll is loaded
-//        {
-//            loopratehz = 1;  //Loop runs every second (The value is in Hertz, so 2 means every 500ms, 0.1f means every 10 second...) 
-
-//            return true;	 // If it is false then plugin will not load
-//        }
-
-//        public override bool Loaded()
-//		//Loaded called after the plugin dll successfully loaded
-//        {
-//            return true;     //If it is false plugin will not start (loop will not called)
-//        }
-
-//        public override bool Loop()
-//		//Loop is called in regular intervalls (set by loopratehz)
-//        {
-//            return true;	//Return value is not used
-//        }
-
-//        public override bool Exit()
-//		//Exit called when plugin is terminated (usually when Mission Planner is exiting)
-//        {
-//            return true;	//Return value is not used
-//        }
-//    }
-//}
-
+﻿using MissionPlanner.Plugin;
 using System;
 using System.Linq;
 using System.Windows.Forms;
@@ -65,6 +6,8 @@ using MissionPlanner;
 using MissionPlanner.Controls;
 using MissionPlanner.Mavlink;
 using System.Text;
+using MissionPlanner.Grid;
+using MissionPlanner.Utilities;
 
 namespace NamedValueFloatSupport
 {
@@ -73,84 +16,213 @@ namespace NamedValueFloatSupport
         private TextBox textBoxName;
         private TextBox textBoxValue;
         private MyButton sendButton;
+        private MyButton clearButton;
+        private TextBox logNVFTextBox;
         private TextBox logTextBox;
+        private System.Windows.Forms.TabPage tab = new System.Windows.Forms.TabPage();
+        private TabControl tabctrl;
+        int messagecount;
+        System.ComponentModel.Container components;
+        private System.Windows.Forms.Timer NVFtabtimer;
 
         public override string Name => "NamedValueFloatSupport";
 
         public override string Version => "0.1";
 
         public override string Author => "Sam Kemp";
-
         public override bool Loaded()
         {
-            // Get the action layout panel from the Flight Data screen
-            TableLayoutPanel actionLayout = Host.MainForm.FlightData.Controls.Find("tableLayoutPanel1", true).FirstOrDefault() as TableLayoutPanel;
+            components = new System.ComponentModel.Container();
 
-            if (actionLayout == null)
-            { 
-                MessageBox.Show("Action layout not found!");
-                return false;
-            }
-            // Ensure the parent container is set to fill the entire available space
-            actionLayout.Dock = DockStyle.Fill;
-            // Adjust the height of the action layout
-            actionLayout.RowStyles.Clear();
-            for (int i = 0; i < actionLayout.RowCount; i++) 
+            tab.Text = "NVF";
+            tab.Name = "tabNVF";
+            Host.MainForm.FlightData.TabListOriginal.Add(tab);
+
+            tabctrl = Host.MainForm.FlightData.tabControlactions;
+            tabctrl.TabPages.Insert(2, tab);
+            ThemeManager.ApplyThemeTo(tab);
+            Settings.Instance["tabcontrolactions"] += ';' + tab.Name;
+
+            // Get the action layout panel from the Flight Data screen
+            TableLayoutPanel NVFlayout = new System.Windows.Forms.TableLayoutPanel
             {
-                actionLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                Dock = DockStyle.Fill,
+                RowCount = 8,
+                ColumnCount = 5
+            };
+            NVFlayout.RowStyles.Clear();
+            for (int i = 0; i < NVFlayout.RowCount; i++)
+            {
+                NVFlayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100.0f / NVFlayout.RowCount));
             }
+            NVFlayout.ColumnStyles.Clear();
+            for (int i = 0; i < NVFlayout.ColumnCount; i++)
+            {
+                NVFlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100.0f / NVFlayout.ColumnCount));
+            }
+
 
             // Create and add the text boxes and button
-            textBoxName = new TextBox();
-            textBoxName.Dock = DockStyle.Fill;
-            textBoxValue = new TextBox();
-            textBoxValue.Dock = DockStyle.Fill;
-            sendButton = new MyButton();
-            sendButton.Dock = DockStyle.Fill;
-            logTextBox = new TextBox();
+            textBoxName = new TextBox { Dock = DockStyle.Fill };
+            textBoxValue = new TextBox { Dock = DockStyle.Fill };
+            sendButton = new MyButton { Dock = DockStyle.Fill, Text = "Send NVF" };
+            clearButton = new MyButton { Dock = DockStyle.Fill, Text = "Clear" };
+            logNVFTextBox = new TextBox
+            {
+                Multiline = true,
+                ScrollBars = ScrollBars.Vertical,
+                ReadOnly = true,
+                Dock = DockStyle.Fill
+            };
+            logTextBox = new TextBox
+            {
+                Multiline = true,
+                ScrollBars = ScrollBars.Vertical,
+                ReadOnly = true,
+                Dock = DockStyle.Fill
+            };
 
-            logTextBox.Multiline = true;
-            logTextBox.ScrollBars = ScrollBars.Vertical;
-            logTextBox.ReadOnly = true;
-            //logTextBox.Height = 100;
-            logTextBox.Dock = DockStyle.Fill;
-
-            sendButton.Text = "Send NamedValueFloat";
             sendButton.Click += SendButton_Click;
+            clearButton.Click += ClearButton_Click;
 
-            actionLayout.Controls.Add(new Label { Text = "Name:" }, 0, 5);
-            actionLayout.Controls.Add(textBoxName, 1, 5);
-            actionLayout.SetColumnSpan(textBoxName, 2);
+            NVFlayout.Controls.Add(new Label { Text = "Name:" }, 0, 0);
+            NVFlayout.Controls.Add(textBoxName, 1, 0);
+            NVFlayout.SetColumnSpan(textBoxName, 2);
 
-            actionLayout.Controls.Add(new Label { Text = "Value:" }, 0, 6);
-            actionLayout.Controls.Add(textBoxValue, 1, 6);
-            actionLayout.SetColumnSpan(textBoxValue, 2);
+            NVFlayout.Controls.Add(new Label { Text = "Value:" }, 0, 1);
+            NVFlayout.Controls.Add(textBoxValue, 1, 1);
+            NVFlayout.SetColumnSpan(textBoxValue, 2);
 
-            actionLayout.Controls.Add(sendButton, 3, 5);
-            actionLayout.SetRowSpan(sendButton, 2);
-            actionLayout.SetColumnSpan(sendButton, 2);
+            NVFlayout.Controls.Add(sendButton, 3, 0);
+            NVFlayout.SetRowSpan(sendButton, 2);
+            NVFlayout.SetColumnSpan(sendButton, 1);
 
-            actionLayout.Controls.Add(logTextBox, 0, 7);
-            actionLayout.SetColumnSpan(logTextBox, 5);
-            actionLayout.SetRowSpan(logTextBox, 3);
+            NVFlayout.Controls.Add(clearButton, 4, 0);
+            NVFlayout.SetRowSpan(clearButton, 2);
+            NVFlayout.SetColumnSpan(clearButton, 1);
 
-            
+            NVFlayout.Controls.Add(logNVFTextBox, 0, 2);
+            NVFlayout.SetColumnSpan(logNVFTextBox, 5);
+            NVFlayout.SetRowSpan(logNVFTextBox, 3);
+
+            NVFlayout.Controls.Add(logTextBox, 0, 5);
+            NVFlayout.SetColumnSpan(logTextBox, 5);
+            NVFlayout.SetRowSpan(logTextBox, 3);
+
+            tab.Controls.Add(NVFlayout);
 
             // Subscribe to MAVLink message stream
             MainV2.comPort.OnPacketReceived += Mavlink_OnPacketReceived;
+
+            // Timer method
+            NVFtabtimer = new System.Windows.Forms.Timer(components);
+            NVFtabtimer.Interval = 200;
+            NVFtabtimer.Tick += new System.EventHandler(NVFtabtimer_Tick);
+            NVFtabtimer.Start();
             return true;
         }
+        //public override bool Loaded()
+        //{
+        //    //TODO Uncomment once Beta is updates
+        //    Host.MainForm.FlightData.TabListOriginal.Add(tab);
+        //    tabctrl = Host.MainForm.FlightData.tabControlactions;
+        //    // set the display name
+        //    tab.Text = "NVF";
+        //    // set the internal id
+        //    tab.Name = "tabNVF";
+        //    tabctrl.TabPages.Insert(2, tab);
+        //    ThemeManager.ApplyThemeTo(tab);
+
+        //    // Get the action layout panel from the Flight Data screen
+        //    TableLayoutPanel NVFlayout = new System.Windows.Forms.TableLayoutPanel();
+        //    // Ensure the parent container is set to fill the entire available space
+        //    NVFlayout.Dock = DockStyle.Fill;
+        //    // Adjust the height of the action layout
+        //    NVFlayout.RowStyles.Clear();
+        //    for (int i = 0; i < NVFlayout.RowCount; i++) 
+        //    {
+        //        NVFlayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        //    }
+
+        //    // Create and add the text boxes and button
+        //    textBoxName = new TextBox();
+        //    textBoxName.Dock = DockStyle.Fill;
+        //    textBoxValue = new TextBox();
+        //    textBoxValue.Dock = DockStyle.Fill;
+        //    sendButton = new MyButton();
+        //    sendButton.Dock = DockStyle.Fill;
+        //    clearButton = new MyButton();
+        //    clearButton.Dock = DockStyle.Fill;
+
+        //    logNVFTextBox = new TextBox();
+        //    logNVFTextBox.Multiline = true;
+        //    logNVFTextBox.ScrollBars = ScrollBars.Vertical;
+        //    logNVFTextBox.ReadOnly = true;
+        //    logNVFTextBox.Dock = DockStyle.Fill;
+
+        //    logTextBox = new TextBox();
+        //    logTextBox.Multiline = true;
+        //    logTextBox.ScrollBars = ScrollBars.Vertical;
+        //    logTextBox.ReadOnly = true;
+        //    logTextBox.Dock = DockStyle.Fill;
+
+        //    sendButton.Text = "Send NVF";
+        //    sendButton.Click += SendButton_Click;
+
+        //    clearButton.Text = "Clear";
+        //    clearButton.Click += ClearButton_Click;
+
+        //    NVFlayout.Controls.Add(new Label { Text = "Name:" }, 0, 0);
+        //    NVFlayout.Controls.Add(textBoxName, 1, 0);
+        //    NVFlayout.SetColumnSpan(textBoxName, 2);
+
+        //    NVFlayout.Controls.Add(new Label { Text = "Value:" }, 0, 1);
+        //    NVFlayout.Controls.Add(textBoxValue, 1, 1);
+        //    NVFlayout.SetColumnSpan(textBoxValue, 2);
+
+        //    NVFlayout.Controls.Add(sendButton, 3, 0);
+        //    NVFlayout.SetRowSpan(sendButton, 2);
+        //    NVFlayout.SetColumnSpan(sendButton, 1);
+
+        //    NVFlayout.Controls.Add(clearButton, 4, 0);
+        //    NVFlayout.SetRowSpan(clearButton, 2);
+        //    NVFlayout.SetColumnSpan(clearButton, 1);
+
+        //    NVFlayout.Controls.Add(logNVFTextBox, 0, 2);
+        //    NVFlayout.SetColumnSpan(logNVFTextBox, 5);
+        //    NVFlayout.SetRowSpan(logNVFTextBox, 3);
+
+        //    NVFlayout.Controls.Add(logTextBox, 0, 5);
+        //    NVFlayout.SetColumnSpan(logTextBox, 5);
+        //    NVFlayout.SetRowSpan(logTextBox, 3);
+
+        //    tab.Controls.Add(NVFlayout);
+
+        //    // Subscribe to MAVLink message stream
+        //    MainV2.comPort.OnPacketReceived += Mavlink_OnPacketReceived;
+
+        //    // Timer method
+        //    NVFtabtimer.Interval = 200;
+        //    NVFtabtimer.Tick += new System.EventHandler(NVFtabtimer_Tick);
+        //    return true;
+        //}
 
         private void SendButton_Click(object sender, EventArgs e)
         {
             string name = textBoxName.Text;
             if (float.TryParse(textBoxValue.Text, out float value))
             {
+                // Create a fixed-length array for name
+                byte[] nameBytes = new byte[10]; // Fixed length for MAVLink name field
+                byte[] tempBytes = Encoding.ASCII.GetBytes(name);
+
+                // Copy the string bytes into the fixed-length array
+                Array.Copy(tempBytes, nameBytes, tempBytes.Length);
                 // Create the named_value_float MAVLink message
                 var namedValueFloat = new MAVLink.mavlink_named_value_float_t
                 {
                     time_boot_ms = (uint)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalMilliseconds,
-                    name = Encoding.ASCII.GetBytes(name),
+                    name = nameBytes,
                     value = value
                 };
 
@@ -164,21 +236,55 @@ namespace NamedValueFloatSupport
             }
         }
 
+        private void ClearButton_Click(object sender, EventArgs e)
+        {
+            logNVFTextBox.Clear();
+        }
+
         private void Mavlink_OnPacketReceived(object sender, MAVLink.MAVLinkMessage message)
-        {   
+        {
             if (message.msgid == (byte)MAVLink.MAVLINK_MSG_ID.NAMED_VALUE_FLOAT)
             {
-                var namedValueFloat = (MAVLink.mavlink_named_value_float_t)message.ToStructure<MAVLink.mavlink_named_value_float_t>();
-                string name = Encoding.ASCII.GetString(namedValueFloat.name).TrimEnd('\0');
+                var namedValueFloat = message.ToStructure<MAVLink.mavlink_named_value_float_t>();
+                //string name = Encoding.ASCII.GetString(namedValueFloat.name).TrimEnd('\0');
+                
+
+                string rawName = Encoding.ASCII.GetString(namedValueFloat.name);
+                Console.WriteLine(rawName);
+                string name = new string(rawName.Where(c => !char.IsControl(c) && !char.IsWhiteSpace(c)).ToArray());
+
                 string logEntry = $"{name} = {namedValueFloat.value}";
 
                 // Update log text box
                 Host.MainForm.BeginInvoke((MethodInvoker)delegate
                 {
-                    logTextBox.AppendText(logEntry + Environment.NewLine);
-                    logTextBox.SelectionStart = logTextBox.Text.Length;
-                    logTextBox.ScrollToCaret();
+                    logNVFTextBox.AppendText(logEntry + Environment.NewLine);
+                    logNVFTextBox.SelectionStart = logNVFTextBox.Text.Length;
+                    logNVFTextBox.ScrollToCaret();
                 });
+            }
+        }
+
+        private void NVFtabtimer_Tick(object sender, EventArgs e)
+        {
+            var messagetime = MainV2.comPort.MAV.cs.messages.LastOrDefault().time;
+            if (messagecount != messagetime.toUnixTime())
+            {
+                try
+                {
+                    StringBuilder message = new StringBuilder();
+                    MainV2.comPort.MAV.cs.messages.ForEach(x =>
+                    {
+                        message.Append(x.Item1 + " : " + x.Item2 + "\r\n");
+                    });
+                    logTextBox.Text = message.ToString();
+                    logNVFTextBox.ScrollToCaret();
+                    messagecount = messagetime.toUnixTime();
+                }
+                catch (Exception ex)
+                {
+                    //log.Error(ex);
+                }
             }
         }
 
