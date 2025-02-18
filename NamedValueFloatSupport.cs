@@ -192,6 +192,7 @@ namespace NamedValueFloatSupport
                         message.Append(x.Item1 + " : " + x.Item2 + "\r\n");
                     });
                     logTextBox.Text = message.ToString();
+                    logTextBox.SelectionStart = logTextBox.Text.Length; // Move caret to end
                     logTextBox.ScrollToCaret();
                     messagecount = messagetime.toUnixTime();
                 }
