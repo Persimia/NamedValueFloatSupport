@@ -121,92 +121,6 @@ namespace NamedValueFloatSupport
             NVFtabtimer.Start();
             return true;
         }
-        //public override bool Loaded()
-        //{
-        //    //TODO Uncomment once Beta is updates
-        //    Host.MainForm.FlightData.TabListOriginal.Add(tab);
-        //    tabctrl = Host.MainForm.FlightData.tabControlactions;
-        //    // set the display name
-        //    tab.Text = "NVF";
-        //    // set the internal id
-        //    tab.Name = "tabNVF";
-        //    tabctrl.TabPages.Insert(2, tab);
-        //    ThemeManager.ApplyThemeTo(tab);
-
-        //    // Get the action layout panel from the Flight Data screen
-        //    TableLayoutPanel NVFlayout = new System.Windows.Forms.TableLayoutPanel();
-        //    // Ensure the parent container is set to fill the entire available space
-        //    NVFlayout.Dock = DockStyle.Fill;
-        //    // Adjust the height of the action layout
-        //    NVFlayout.RowStyles.Clear();
-        //    for (int i = 0; i < NVFlayout.RowCount; i++) 
-        //    {
-        //        NVFlayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        //    }
-
-        //    // Create and add the text boxes and button
-        //    textBoxName = new TextBox();
-        //    textBoxName.Dock = DockStyle.Fill;
-        //    textBoxValue = new TextBox();
-        //    textBoxValue.Dock = DockStyle.Fill;
-        //    sendButton = new MyButton();
-        //    sendButton.Dock = DockStyle.Fill;
-        //    clearButton = new MyButton();
-        //    clearButton.Dock = DockStyle.Fill;
-
-        //    logNVFTextBox = new TextBox();
-        //    logNVFTextBox.Multiline = true;
-        //    logNVFTextBox.ScrollBars = ScrollBars.Vertical;
-        //    logNVFTextBox.ReadOnly = true;
-        //    logNVFTextBox.Dock = DockStyle.Fill;
-
-        //    logTextBox = new TextBox();
-        //    logTextBox.Multiline = true;
-        //    logTextBox.ScrollBars = ScrollBars.Vertical;
-        //    logTextBox.ReadOnly = true;
-        //    logTextBox.Dock = DockStyle.Fill;
-
-        //    sendButton.Text = "Send NVF";
-        //    sendButton.Click += SendButton_Click;
-
-        //    clearButton.Text = "Clear";
-        //    clearButton.Click += ClearButton_Click;
-
-        //    NVFlayout.Controls.Add(new Label { Text = "Name:" }, 0, 0);
-        //    NVFlayout.Controls.Add(textBoxName, 1, 0);
-        //    NVFlayout.SetColumnSpan(textBoxName, 2);
-
-        //    NVFlayout.Controls.Add(new Label { Text = "Value:" }, 0, 1);
-        //    NVFlayout.Controls.Add(textBoxValue, 1, 1);
-        //    NVFlayout.SetColumnSpan(textBoxValue, 2);
-
-        //    NVFlayout.Controls.Add(sendButton, 3, 0);
-        //    NVFlayout.SetRowSpan(sendButton, 2);
-        //    NVFlayout.SetColumnSpan(sendButton, 1);
-
-        //    NVFlayout.Controls.Add(clearButton, 4, 0);
-        //    NVFlayout.SetRowSpan(clearButton, 2);
-        //    NVFlayout.SetColumnSpan(clearButton, 1);
-
-        //    NVFlayout.Controls.Add(logNVFTextBox, 0, 2);
-        //    NVFlayout.SetColumnSpan(logNVFTextBox, 5);
-        //    NVFlayout.SetRowSpan(logNVFTextBox, 3);
-
-        //    NVFlayout.Controls.Add(logTextBox, 0, 5);
-        //    NVFlayout.SetColumnSpan(logTextBox, 5);
-        //    NVFlayout.SetRowSpan(logTextBox, 3);
-
-        //    tab.Controls.Add(NVFlayout);
-
-        //    // Subscribe to MAVLink message stream
-        //    MainV2.comPort.OnPacketReceived += Mavlink_OnPacketReceived;
-
-        //    // Timer method
-        //    NVFtabtimer.Interval = 200;
-        //    NVFtabtimer.Tick += new System.EventHandler(NVFtabtimer_Tick);
-        //    return true;
-        //}
-
         private void SendButton_Click(object sender, EventArgs e)
         {
             string name = textBoxName.Text;
@@ -278,7 +192,7 @@ namespace NamedValueFloatSupport
                         message.Append(x.Item1 + " : " + x.Item2 + "\r\n");
                     });
                     logTextBox.Text = message.ToString();
-                    logNVFTextBox.ScrollToCaret();
+                    logTextBox.ScrollToCaret();
                     messagecount = messagetime.toUnixTime();
                 }
                 catch (Exception ex)
